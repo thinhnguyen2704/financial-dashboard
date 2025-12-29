@@ -1,11 +1,14 @@
 export interface AuthContextType {
+  user: User | null;
   token: string | null;
-  setToken: (token: string | null) => void;
+  isAuthenticated: boolean;
+  login: (token: string) => void;
+  logout: () => void;
 }
 
 export interface User {
-  id: number;
   email: string;
+  role?: string;
 }
 
 export interface AuthResponse {

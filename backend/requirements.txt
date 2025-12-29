@@ -3,8 +3,9 @@ uvicorn
 sqlalchemy
 psycopg2-binary
 python-jose
-passlib[bcrypt]
 python-dotenv
 pandas
 numpy
 yfinance
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2

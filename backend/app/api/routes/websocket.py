@@ -1,20 +1,22 @@
-from fastapi import APIRouter, WebSocket
-import asyncio
-import random
+from fastapi import WebSocket, APIRouter
+from app.core.deps_ws import get_current_user_ws
+from app.services.market_data import stream_prices
+from app.core.deps_ws import get_current_user_ws as authenticate_ws
 
 router = APIRouter()
+
 
 @router.websocket("/ws/equity")
 async def equity_stream(ws: WebSocket):
     await ws.accept()
-    equity = 10000
 
-    try:
-        while True:
-            equity *= 1 + random.uniform(-0.001, 0.001)
-            await ws.send_json({
-                "equity": equity
-            })
-            await asyncio.sleep(1)
-    except Exception:
-        await ws.close()
+    await get_current_user_ws(ws)
+
+    while True:
+        await ws.send_json({"equity": 100000})
+
+
+@router.websocket("/ws/prices")
+async def prices(ws: WebSocket):
+    await authenticate_ws(ws)
+    await stream_prices(ws)
