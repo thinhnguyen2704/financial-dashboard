@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import api from '../api/client';
-import { useAuth } from '../auth/useAuth';
+import { useAuth } from '../hooks/useAuth';
 import type { AuthResponse } from '../types/auth';
 
 export default function Login() {
