@@ -7,20 +7,19 @@ from app.api.deps import get_db
 
 router = APIRouter()
 
+
 @router.post("/signup", response_model=Token)
 def signup(user: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == user.email).first():
         raise HTTPException(status_code=400, detail="User already exists")
 
-    new_user = User(
-        email=user.email,
-        password_hash=hash_password(user.password)
-    )
+    new_user = User(email=user.email, password_hash=hash_password(user.password))
     db.add(new_user)
     db.commit()
 
     token = create_access_token(user.email)
     return {"access_token": token}
+
 
 @router.post("/login", response_model=Token)
 def login(user: UserCreate, db: Session = Depends(get_db)):
