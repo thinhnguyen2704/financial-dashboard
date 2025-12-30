@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from app.schemas.user import Token
 from app.models.user import User
@@ -9,9 +9,10 @@ from app.core.security import (
     create_refresh_token,
 )
 from app.api.deps import get_db
-from app.core.config import settings
 from pydantic import BaseModel, EmailStr, Field
-from jose import jwt
+from datetime import datetime, timezone
+from app.models.refresh_token import RefreshToken
+from app.models.role import Role
 
 router = APIRouter()
 
@@ -35,7 +36,9 @@ def signup(data: SignupRequest, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists"
         )
 
-    new_user = User(email=data.email, hashed_password=hash_password(data.password))
+    new_user = User(
+        email=data.email, hashed_password=hash_password(data.password), role=Role.user
+    )
     db.add(new_user)
     db.commit()
 
@@ -49,12 +52,13 @@ def login(data: SignupRequest, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
+    access_token = create_access_token({"sub": user.email, "role": user.role})
 
-    return {
-        "access_token": create_access_token(user.email),
-        "refresh_token": create_refresh_token(user.email),
-        "token_type": "bearer",
-    }
+    refresh_token, expires = create_refresh_token()
+    db.add(RefreshToken(token=refresh_token, user_id=user.id, expires_at=expires))
+    db.commit()
+
+    return {"access_token": access_token, "refresh_token": refresh_token}
 
 
 class RefreshRequest(BaseModel):
@@ -62,14 +66,22 @@ class RefreshRequest(BaseModel):
 
 
 @router.post("/refresh")
-def refresh(data: RefreshRequest):
-    payload = jwt.decode(
-        data.refresh_token,
-        settings.JWT_SECRET_KEY,
-        algorithms=[settings.JWT_ALGORITHM],
+def refresh_token(token: str = Body(...), db: Session = Depends(get_db)):
+    stored = (
+        db.query(RefreshToken)
+        .filter(
+            RefreshToken.token == token,
+            not RefreshToken.revoked,
+            RefreshToken.expires_at > datetime.now(timezone.utc),
+        )
+        .first()
     )
 
-    if payload.get("type") != "refresh":
-        raise HTTPException(status_code=401)
+    if not stored:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-    return {"access_token": create_access_token(payload["sub"])}
+    access_token = create_access_token(
+        {"sub": stored.user.email, "role": stored.user.role}
+    )
+
+    return {"access_token": access_token}

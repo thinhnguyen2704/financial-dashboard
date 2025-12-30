@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from app.core.config import settings
 import bcrypt
+import secrets
 
 MAX_BCRYPT_BYTES = 72
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -68,11 +69,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-def create_refresh_token(subject: str):
-    expire = datetime.now(timezone.utc) + timedelta(days=7)
-    payload = {"sub": subject, "exp": expire, "type": "refresh"}
-    return jwt.encode(
-        payload,
-        settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
-    )
+def create_refresh_token() -> tuple[str, datetime]:
+    token = secrets.token_urlsafe(64)
+    expires = datetime.now(timezone.utc) + timedelta(days=30)
+    return token, expires

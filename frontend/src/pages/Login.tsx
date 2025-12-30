@@ -36,7 +36,6 @@ export default function Login() {
 
 			localStorage.setItem('token', res.data.access_token);
 
-			// Optional: store refresh token
 			if (res.data.refresh_token) {
 				localStorage.setItem('refresh_token', res.data.refresh_token);
 			}
