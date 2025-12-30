@@ -1,21 +1,32 @@
-import { useEffect } from "react";
-import { connectEquitySocket } from "../services/websocket";
-import { useAuth } from "../hooks/useAuth";
+import { useEffect } from 'react';
+import { connectEquitySocket } from '../services/websocket';
+import { connectRoleBasedSocket } from '../services/wsManager';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Dashboard() {
-  const { token } = useAuth();
+	const { token, user } = useAuth();
 
-  useEffect(() => {
-    if (!token) return;
+	const setData = (data: Record<string, unknown>) => {
+		console.log('Role-based update:', data);
+	};
 
-    const ws = connectEquitySocket(token);
+	useEffect(() => {
+		if (!token) return;
 
-    ws.onmessage = (event) => {
-      console.log("Equity update:", JSON.parse(event.data));
-    };
+		const ws = connectEquitySocket(token);
 
-    return () => ws.close();
-  }, [token]);
+		ws.onmessage = (event) => {
+			console.log('Equity update:', JSON.parse(event.data));
+		};
 
-  return <h2>Dashboard</h2>;
+		return () => ws.close();
+	}, [token]);
+
+	useEffect(() => {
+		if (!token || !user || !user.role) return;
+
+		connectRoleBasedSocket(token, user.role as 'user' | 'admin', setData);
+	}, [token, user]);
+
+	return <h2>Dashboard</h2>;
 }

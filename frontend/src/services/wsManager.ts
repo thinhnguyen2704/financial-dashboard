@@ -5,14 +5,16 @@ let reconnecting = false;
 
 export async function connectEquitySocket(
 	token: string,
-	onMessage: (data: Record<string, unknown>) => void
+	onMessage: (data: Record<string, unknown>) => void,
+	path: string = "/ws/equity"
+
 ) {
 	if (socket) {
 		socket.close();
 	}
 
 	socket = new WebSocket(
-		`ws://localhost:8000/ws/equity?token=${encodeURIComponent(token)}`
+		`ws://localhost:8000${path}?token=${encodeURIComponent(token)}`
 	);
 
 	socket.onmessage = (event) => {
@@ -37,4 +39,14 @@ export async function connectEquitySocket(
 	socket.onerror = () => {
 		socket?.close();
 	};
+}
+
+export async function connectRoleBasedSocket(
+	token: string,
+	role: 'user' | 'admin',
+	onMessage: (data: Record<string, unknown>) => void
+) {
+	const path = role === 'admin' ? '/ws/admin/metrics' : '/ws/equity';
+
+	return connectEquitySocket(token, onMessage, path);
 }

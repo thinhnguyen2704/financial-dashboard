@@ -7,7 +7,8 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.get("/stats")
-def admin_stats(
-    user: User = Depends(require_role(Role.admin)),
-):
-    return {"status": "ok"}
+def admin_stats(user: User = Depends(require_role(Role.admin))):
+    return {
+        "status": "ok",
+        "admin": user.email,
+    }
