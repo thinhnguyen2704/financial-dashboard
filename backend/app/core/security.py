@@ -2,7 +2,8 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
+from jose import jwt, JWTError
+from jose.exceptions import ExpiredSignatureError
 from app.core.config import settings
 from app.db.session import get_db
 from sqlalchemy.orm import Session
@@ -44,24 +45,40 @@ def verify_password(password: str, hashed_password: str) -> bool:
     )
 
 
-def create_access_token(subject: str):
+def create_access_token(data: dict):
+    to_encode = data.copy()
+
+    if not isinstance(to_encode.get("sub"), str):
+        raise ValueError("JWT sub must be a string")
+    
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
-    payload = {"sub": subject, "exp": expire}
+
+    to_encode.update({
+        "exp": expire,
+        "type": "access",
+    })
+
     return jwt.encode(
-        payload,
+        to_encode,
         SECRET_KEY,
         algorithm=ALGORITHM,
     )
 
 
-def decode_access_token(token: str):
+def decode_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload.get("sub")
-    except jwt.JWTError:
-        return None
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+        )
+        return payload
+    except ExpiredSignatureError:
+        raise
+    except JWTError:
+        raise
 
 
 def get_current_user(

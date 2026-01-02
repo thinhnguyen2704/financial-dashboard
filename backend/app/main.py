@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from app.api.routes import auth, backtest, websocket, admin
 from app.db.init_db import init_db
 from fastapi.middleware.cors import CORSMiddleware
+import app.models  # noqa: F401
+from app.db.base import Base
 
 
 @asynccontextmanager
@@ -29,3 +31,5 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(backtest.router, prefix="/backtest", tags=["backtest"])
 app.include_router(websocket.router)
 app.include_router(admin.router)
+
+print(Base.metadata.tables.keys())

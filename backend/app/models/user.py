@@ -15,4 +15,6 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan"
     )
+    portfolios = relationship("Portfolio", back_populates="owner")
+
 

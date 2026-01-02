@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.security import decode_access_token
 from app.db.session import SessionLocal
 from app.models.user import User
-from backend.app.models.role import Role
+from app.models.role import Role
 
 
 async def get_current_user_ws(
@@ -21,9 +21,6 @@ async def get_current_user_ws(
 
     try:
         payload = decode_access_token(token)
-        email: str | None = payload.get("sub")
-        if not email:
-            raise RuntimeError("Invalid token payload")
     except ExpiredSignatureError:
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
         raise RuntimeError("TOKEN_EXPIRED")
@@ -31,10 +28,16 @@ async def get_current_user_ws(
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
         raise RuntimeError("Invalid token")
 
-    email = payload.get("sub")
+    # Print statements for debugging
+    print("WS TOKEN:", token)
+    print("DECODED:", payload)
+
+    email: str | None = payload.get("sub")
     if not email:
         await ws.close(code=status.WS_1008_POLICY_VIOLATION)
-        raise RuntimeError("Invalid payload")
+        raise RuntimeError("Invalid token payload")
+    if payload.get("type") != "access":
+        raise RuntimeError("Invalid token type")
 
     db: Session = SessionLocal()
     try:

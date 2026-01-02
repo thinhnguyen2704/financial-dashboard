@@ -42,7 +42,14 @@ def signup(data: SignupRequest, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
 
-    return {"access_token": create_access_token(new_user.email)}
+    return {
+        "access_token": create_access_token(
+            {
+                "sub": new_user.email,
+                "role": new_user.role,
+            }
+        )
+    }
 
 
 @router.post("/login")

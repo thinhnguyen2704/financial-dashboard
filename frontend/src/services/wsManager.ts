@@ -3,9 +3,9 @@ import { refreshAccessToken } from '../auth/auth';
 let socket: WebSocket | null = null;
 let reconnecting = false;
 
-export async function connectEquitySocket(
+export async function connectEquitySocket<T>(
 	token: string,
-	onMessage: (data: Record<string, unknown>) => void,
+	onMessage: (data: T) => void,
 	path: string = "/ws/equity"
 
 ) {
@@ -18,7 +18,7 @@ export async function connectEquitySocket(
 	);
 
 	socket.onmessage = (event) => {
-		onMessage(JSON.parse(event.data));
+		onMessage(JSON.parse(event.data) as T);
 	};
 
 	socket.onclose = async (event) => {
