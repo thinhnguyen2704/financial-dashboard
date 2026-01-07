@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.portfolio import Portfolio
 from app.domain.models import Trade as EngineTrade
-from app.services.trade_execution_service import execute_trade
+from backend.app.services.trade_execution import execute_trade
 from app.schemas.trade import TradeCreate
 
 router = APIRouter(prefix="/portfolios", tags=["trades"])
