@@ -14,7 +14,7 @@ class Portfolio(Base):
 
     name = Column(String(255), nullable=False)
     base_currency = Column(String(8), nullable=False, default="USD")
-    initial_cash = Column(Numeric(18, 2), nullable=False)
+    initial_cash = Column(Numeric(18, 2), nullable=False, default=100000)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -23,7 +23,10 @@ class Portfolio(Base):
         "Trade", back_populates="portfolio", cascade="all, delete-orphan"
     )
     positions = relationship(
-        "Position", back_populates="portfolio", cascade="all, delete-orphan"
+        "Position",
+        back_populates="portfolio",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
     cash_ledger = relationship(
         "CashLedger", back_populates="portfolio", cascade="all, delete-orphan"
