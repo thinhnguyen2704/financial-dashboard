@@ -1,15 +1,19 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float, func
 from sqlalchemy.orm import relationship
-from datetime import datetime
-from app.db.base import Base
+from app.db.base_class import Base
+
 
 class Portfolio(Base):
     __tablename__ = "portfolios"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    cash = Column(Float, default=100_000)
+    created_at = Column(DateTime, default=func.now())
 
-    owner = relationship("User", back_populates="portfolios")
+    user = relationship("User", back_populates="portfolios")
     positions = relationship("Position", back_populates="portfolio")
+    trades = relationship(
+        "Trade", back_populates="portfolio", cascade="all, delete-orphan"
+    )

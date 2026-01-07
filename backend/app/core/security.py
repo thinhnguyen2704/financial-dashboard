@@ -9,7 +9,6 @@ from app.db.session import get_db
 from sqlalchemy.orm import Session
 from app.models.user import User
 import bcrypt
-import secrets
 
 MAX_BCRYPT_BYTES = 72
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -50,15 +49,17 @@ def create_access_token(data: dict):
 
     if not isinstance(to_encode.get("sub"), str):
         raise ValueError("JWT sub must be a string")
-    
+
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
 
-    to_encode.update({
-        "exp": expire,
-        "type": "access",
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "type": "access",
+        }
+    )
 
     return jwt.encode(
         to_encode,
@@ -104,7 +105,44 @@ def get_current_user(
     return user
 
 
-def create_refresh_token() -> tuple[str, datetime]:
-    token = secrets.token_urlsafe(64)
-    expires = datetime.now(timezone.utc) + timedelta(days=30)
-    return token, expires
+def create_refresh_token(data: dict) -> str:
+    if not isinstance(data.get("sub"), str):
+        raise ValueError("JWT sub must be a string")
+
+    print("REFRESH DAYS:", settings.REFRESH_TOKEN_EXPIRE_DAYS)
+
+    expire = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
+
+    to_encode = {
+        "sub": data["sub"],
+        "exp": expire,
+        "type": "refresh",
+    }
+
+    return jwt.encode(
+        to_encode,
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+
+def decode_refresh_token(token: str) -> dict:
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+        )
+    except JWTError:
+        raise RuntimeError("Invalid refresh token")
+
+    if payload.get("type") != "refresh":
+        raise RuntimeError("Invalid refresh token type")
+
+    sub = payload.get("sub")
+    if not isinstance(sub, str):
+        raise RuntimeError("Invalid refresh token subject")
+
+    return payload

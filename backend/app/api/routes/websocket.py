@@ -6,7 +6,11 @@ from app.models.role import Role
 from app.db.session import SessionLocal
 from app.models.portfolio import Portfolio
 from app.services.pnl import calculate_pnl
+from starlette.websockets import WebSocketDisconnect
 import asyncio
+from app.services.pnl import calculate_equity
+from app.services.market_data import get_latest_prices
+from app.services.portfolio import load_portfolio
 
 router = APIRouter()
 
@@ -14,16 +18,32 @@ router = APIRouter()
 @router.websocket("/ws/equity")
 async def equity_stream(ws: WebSocket):
     await ws.accept()
-    user = await get_current_user_ws(ws, required_role=Role.user)
+    try:
+        await get_current_user_ws(ws, required_role=Role.user)
+    except RuntimeError as e:
+        reason = str(e)
 
-    while True:
-        await ws.send_json(
-            {
-                "equity": 100000,
-                "user": user.email,
-            }
-        )
-        await asyncio.sleep(1)
+        if reason == "TOKEN_EXPIRED":
+            await ws.close(code=4001, reason=reason)
+        elif reason == "Forbidden":
+            await ws.close(code=4003, reason=reason)
+        else:
+            await ws.close(code=4000, reason=reason)
+        return
+
+    try:
+        while True:
+            await ws.send_json({"equity": 100_000})
+            await asyncio.sleep(1)
+
+    except WebSocketDisconnect:
+        # Client disconnected — clean exit
+        print("WebSocket disconnected")
+
+    except Exception as e:
+        # Unexpected error — log & close
+        print("WebSocket error:", e)
+        await ws.close()
 
 
 @router.websocket("/ws/admin/metrics")
@@ -72,5 +92,43 @@ async def pnl_stream(ws: WebSocket):
             )
 
             await asyncio.sleep(1)
+    finally:
+        db.close()
+
+
+@router.websocket("/ws/portfolio/{portfolio_id}")
+async def portfolio_stream(ws: WebSocket, portfolio_id: int):
+    user = await get_current_user_ws(ws)
+    await ws.accept()
+
+    db = SessionLocal()
+
+    try:
+        portfolio = load_portfolio(portfolio_id, user)
+        symbols = [p.symbol for p in portfolio.positions]
+
+        while True:
+            prices = await get_latest_prices(symbols)
+            equity = calculate_equity(portfolio, prices)
+
+            await ws.send_json(
+                {
+                    "equity": equity,
+                    "cash": portfolio.cash,
+                    "positions": [
+                        {
+                            "symbol": p.symbol,
+                            "qty": p.quantity,
+                            "price": prices.get(p.symbol),
+                        }
+                        for p in portfolio.positions
+                    ],
+                }
+            )
+
+            await asyncio.sleep(1)
+
+    except WebSocketDisconnect:
+        pass
     finally:
         db.close()

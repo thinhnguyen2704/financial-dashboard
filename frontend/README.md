@@ -1,73 +1,221 @@
-# React + TypeScript + Vite
+# PCA-Stock Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full‑stack quantitative trading and portfolio analytics platform with authenticated REST APIs, real‑time WebSocket streaming, and a React + TypeScript frontend.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 1. Tech Stack
 
-## React Compiler
+### Backend
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+* **FastAPI** (REST + WebSockets)
+* **SQLAlchemy ORM**
+* **PostgreSQL** (Dockerized)
+* **JWT Authentication** (Access + Refresh tokens)
+* **Role‑Based Access Control (RBAC)**
+* **Passlib / bcrypt** for password hashing
 
-## Expanding the ESLint configuration
+### Frontend
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+* **React + TypeScript** (Vite)
+* **AuthContext / AuthProvider**
+* **Protected Routes**
+* **JWT decoding & refresh logic**
+* **WebSocket client with auto‑reconnect**
+* **Charting for equity & PnL**
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 2. Core Features Implemented
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Authentication & Security
+
+* User signup & login
+* Password hashing (bcrypt)
+* JWT access tokens
+* Refresh tokens persisted in DB
+* Token expiration handling
+* Role‑based permissions (admin / user)
+* Protected REST endpoints
+* Authenticated WebSocket connections
+
+### Database Models
+
+* User
+* RefreshToken
+* Portfolio (structure prepared)
+
+### WebSockets
+
+* Authenticated equity / portfolio streaming
+* JWT validation in WebSocket handshake
+* Role‑based WebSocket access
+* Auto‑disconnect handling
+
+### Portfolio & Trading
+
+* Portfolio state (cash, positions)
+* Equity calculation pipeline
+* PnL streaming (foundation)
+* Transaction cost & slippage hooks
+
+### Analytics
+
+* Risk Metrics API
+
+  * Sharpe Ratio
+  * Max Drawdown
+* Stateless batch computation
+* Designed for backtests & live portfolios
+
+---
+
+## 3. API Overview
+
+### Auth
+
+* `POST /auth/signup`
+* `POST /auth/login`
+* `POST /auth/refresh`
+
+### Risk
+
+* `POST /risk/metrics`
+
+### WebSockets
+
+* `/ws/equity`
+* `/ws/portfolio/{portfolio_id}`
+
+---
+
+## 4. Frontend Architecture
+
+```
+frontend/
+├── auth/
+│   ├── AuthContext.tsx
+│   ├── AuthProvider.tsx
+│   └── useAuth.ts
+├── components/
+│   ├── EquityChart.tsx
+│   └── ProtectedRoute.tsx
+├── pages/
+│   ├── Login.tsx
+│   ├── Signup.tsx
+│   └── Dashboard.tsx
+├── types/
+│   ├── auth.ts
+│   ├── portfolio.ts
+│   └── risk.ts
+└── services/
+    ├── api.ts
+    └── websocket.ts
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 5. Backend Architecture
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+backend/app/
+├── api/routes/
+│   ├── auth.py
+│   ├── websocket.py
+│   ├── risk.py
+│   └── admin.py
+├── core/
+│   ├── security.py
+│   ├── deps.py
+│   └── deps_ws.py
+├── db/
+│   ├── base.py
+│   ├── session.py
+│   └── init_db.py
+├── models/
+│   ├── user.py
+│   ├── refresh_token.py
+│   └── portfolio.py
+└── main.py
+```
+
+---
+
+## 6. Current State
+
+* Backend fully authenticated
+* WebSocket auth stable
+* Risk metrics API operational
+* Frontend auth stable
+* Portfolio streaming scaffolded
+
+---
+
+## 7. Known Non‑Issues (Resolved)
+
+* bcrypt compatibility
+* datetime / timezone bugs
+* circular imports
+* WebSocket JWT validation
+* token expiration handling
+
+---
+
+# ROADMAP CHECKLIST
+
+## Phase 1 — Portfolio Engine (NEXT)
+
+* [ ] Persistent portfolio tables
+* [ ] Position model
+* [ ] Trade execution model
+* [ ] Transaction costs & slippage
+* [ ] Real equity calculation service
+
+## Phase 2 — Strategy System
+
+* [ ] Strategy configuration UI
+* [ ] Signal → trade execution pipeline
+* [ ] Backtesting engine
+* [ ] Strategy result storage
+
+## Phase 3 — Advanced Analytics
+
+* [ ] Rolling Sharpe
+* [ ] Sortino / Calmar
+* [ ] Drawdown curves
+* [ ] Risk metrics WebSocket stream
+
+## Phase 4 — Market Data
+
+* [ ] Intraday price ingestion
+* [ ] Market data WebSocket
+* [ ] Data normalization layer
+
+## Phase 5 — Broker Integration
+
+* [ ] Paper trading adapter
+* [ ] Order lifecycle management
+* [ ] Broker reconciliation
+
+## Phase 6 — Deployment
+
+* [ ] Docker Compose (API + DB + Frontend)
+* [ ] Nginx reverse proxy
+* [ ] Environment separation
+* [ ] Production security hardening
+
+---
+
+## 8. Design Philosophy
+
+* Stateless APIs
+* Explicit security boundaries
+* Deterministic calculations
+* Frontend as pure consumer
+* Backend as source of truth
+
+---
+
+## 9. Next Immediate Task
+
+➡️ Implement **persistent portfolio & trade models** and connect them to live equity streaming.

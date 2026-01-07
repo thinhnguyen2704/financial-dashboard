@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import datetime, timezone, timedelta
 from app.schemas.user import Token
 from app.models.user import User
 from app.core.security import (
@@ -7,12 +8,14 @@ from app.core.security import (
     verify_password,
     create_access_token,
     create_refresh_token,
+    decode_refresh_token,
 )
-from app.api.deps import get_db
+from app.db.session import get_db
 from pydantic import BaseModel, EmailStr, Field
-from datetime import datetime, timezone
 from app.models.refresh_token import RefreshToken
 from app.models.role import Role
+from app.schemas.token import TokenResponse
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -61,7 +64,10 @@ def login(data: SignupRequest, db: Session = Depends(get_db)):
         )
     access_token = create_access_token({"sub": user.email, "role": user.role})
 
-    refresh_token, expires = create_refresh_token()
+    refresh_token = create_refresh_token({"sub": user.email})
+    expires = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
     db.add(RefreshToken(token=refresh_token, user_id=user.id, expires_at=expires))
     db.commit()
 
@@ -72,23 +78,18 @@ class RefreshRequest(BaseModel):
     refresh_token: str
 
 
-@router.post("/refresh")
-def refresh_token(token: str = Body(...), db: Session = Depends(get_db)):
-    stored = (
-        db.query(RefreshToken)
-        .filter(
-            RefreshToken.token == token,
-            not RefreshToken.revoked,
-            RefreshToken.expires_at > datetime.now(timezone.utc),
-        )
-        .first()
-    )
-
-    if not stored:
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
+@router.post("/refresh", response_model=TokenResponse)
+def refresh_token(data: RefreshRequest):
+    payload = decode_refresh_token(data.refresh_token)
 
     access_token = create_access_token(
-        {"sub": stored.user.email, "role": stored.user.role}
+        {
+            "sub": payload["sub"],
+            "role": "user",
+        }
     )
 
-    return {"access_token": access_token}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
