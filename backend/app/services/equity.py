@@ -1,39 +1,33 @@
 from decimal import Decimal
-from sqlalchemy.orm import Session
+from app.market_data.cache import price_cache
+# from app.domain.portfolio_engine import PortfolioEngine
 
-from app.domain.portfolio_engine import PortfolioEngine
-from app.services.portfolio_state_mapper import portfolio_to_state
-from app.models.portfolio import Portfolio
+def compute_equity_snapshot(state):
+    positions = []
 
+    unrealized = Decimal("0")
 
-def compute_equity_snapshot(
-    db: Session,
-    portfolio_id: int,
-    prices: dict[str, Decimal],
-) -> dict:
-    portfolio = (
-        db.query(Portfolio)
-        .filter(Portfolio.id == portfolio_id)
-        .one()
-    )
+    for sym, pos in state.positions.items():
+        market = price_cache.get(sym)
+        if market is None:
+            continue  # no price yet
 
-    state = portfolio_to_state(portfolio)
+        pnl = (market - pos.avg_price) * pos.quantity
+        unrealized += pnl
 
-    equity = PortfolioEngine.calculate_equity(state, prices)
+        positions.append({
+            "symbol": sym,
+            "quantity": str(pos.quantity),
+            "avg_price": str(pos.avg_price),
+            "market_price": str(market),
+            "unrealized_pnl": str(pnl),
+        })
 
-    unrealized_pnl = equity - state.cash
+    equity = state.cash + unrealized
 
     return {
-        "portfolio_id": portfolio_id,
-        "cash": state.cash,
-        "equity": equity,
-        "unrealized_pnl": unrealized_pnl,
-        "positions": {
-            symbol: {
-                "quantity": pos.quantity,
-                "avg_price": pos.avg_price,
-                "mark_price": prices.get(symbol),
-            }
-            for symbol, pos in state.positions.items()
-        },
+        "cash": str(state.cash),
+        "equity": str(equity),
+        "unrealized_pnl": str(unrealized),
+        "positions": positions,
     }

@@ -5,7 +5,7 @@ import EquityTable from '../components/EquityTable';
 import EquityChart from '../components/EquityChart';
 
 interface EquityHistoryPoint {
-	time: string;
+	date: string;
 	equity: number;
 }
 
@@ -22,7 +22,7 @@ export default function PortfolioLive() {
 				setHistory((h) => [
 					...h.slice(-100),
 					{
-						time: new Date(data.timestamp).toLocaleTimeString(),
+						date: new Date(data.timestamp).toLocaleString(),
 						equity: Number(data.equity),
 					},
 				]);
