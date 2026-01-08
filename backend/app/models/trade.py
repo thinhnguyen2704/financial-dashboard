@@ -29,6 +29,8 @@ class Trade(Base):
 
     executed_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    realized_pnl = Column(Numeric(18, 6), nullable=False)
+
 
     portfolio = relationship("Portfolio", back_populates="trades")
 

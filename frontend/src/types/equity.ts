@@ -15,6 +15,7 @@ export interface EquitySnapshot {
 	timestamp: string;
 	cash: string;
 	equity: string;
+  realized_pnl: string;
 	unrealized_pnl: string;
 	positions: EquityPosition[];
 }

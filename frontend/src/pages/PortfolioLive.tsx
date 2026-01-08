@@ -39,6 +39,9 @@ export default function PortfolioLive() {
 			<h2>Total Equity: {snapshot.equity}</h2>
 			<EquityChart data={history} />
 			<EquityTable snapshot={snapshot} />
+			<h3>Realized PnL: {snapshot.realized_pnl}</h3>
+			<h3>Unrealized PnL: {snapshot.unrealized_pnl}</h3>
+			<h2>Total Equity: {snapshot.equity}</h2>
 		</>
 	);
 }

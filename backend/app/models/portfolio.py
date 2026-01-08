@@ -17,6 +17,8 @@ class Portfolio(Base):
     initial_cash = Column(Numeric(18, 2), nullable=False, default=100000)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    realized_pnl = Column(Numeric(18, 6), nullable=False, default=0)
+
 
     user = relationship("User", back_populates="portfolios")
     trades = relationship(

@@ -4,8 +4,10 @@ from app.db.session import get_db
 from app.core.deps import get_current_user
 from app.models.user import User
 from app.models.portfolio import Portfolio
+from app.models.trade import Trade
 
 router = APIRouter(prefix="/portfolios", tags=["portfolios"])
+
 
 @router.post("/")
 def create_portfolio(
@@ -19,9 +21,20 @@ def create_portfolio(
     db.refresh(portfolio)
     return portfolio
 
+
 @router.get("/")
 def list_portfolios(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     return db.query(Portfolio).filter(Portfolio.owner_id == user.id).all()
+
+
+@router.get("/{portfolio_id}/trades")
+def get_trades(portfolio_id: int, db: Session = Depends(get_db)):
+    return (
+        db.query(Trade)
+        .filter(Trade.portfolio_id == portfolio_id)
+        .order_by(Trade.timestamp.desc())
+        .all()
+    )

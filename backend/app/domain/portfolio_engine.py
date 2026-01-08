@@ -23,41 +23,78 @@ class PortfolioEngine:
 
         new_cash = state.cash + cash_delta
         new_positions = dict(state.positions)
+        realized_pnl = state.realized_pnl
 
         pos = new_positions.get(trade.symbol)
 
+        # --------------------------------------------------
+        # NO EXISTING POSITION
+        # --------------------------------------------------
         if pos is None:
             new_positions[trade.symbol] = Position(
-                symbol=trade.symbol, quantity=signed_qty, avg_price=trade.price
+                symbol=trade.symbol,
+                quantity=signed_qty,
+                avg_price=trade.price,
             )
+
         else:
             new_qty = pos.quantity + signed_qty
 
+            # --------------------------------------------------
+            # REALIZED PNL (ONLY WHEN REDUCING / CLOSING)
+            # --------------------------------------------------
+
+            # SELL closing LONG
+            if trade.side == "SELL" and pos.quantity > 0:
+                closed_qty = min(pos.quantity, trade.quantity)
+                realized_pnl += (trade.price - pos.avg_price) * closed_qty
+
+            # BUY closing SHORT
+            elif trade.side == "BUY" and pos.quantity < 0:
+                closed_qty = min(abs(pos.quantity), trade.quantity)
+                realized_pnl += (pos.avg_price - trade.price) * closed_qty
+
+            # --------------------------------------------------
+            # POSITION UPDATE LOGIC
+            # --------------------------------------------------
+
             # Same direction → increase
             if pos.quantity * signed_qty > 0:
-                total_cost = pos.avg_price * pos.quantity + trade.price * signed_qty
-                avg_price = total_cost / new_qty
+                total_cost = pos.avg_price * abs(pos.quantity) + trade.price * abs(
+                    signed_qty
+                )
+                avg_price = total_cost / abs(new_qty)
                 new_positions[trade.symbol] = Position(
-                    symbol=trade.symbol, quantity=new_qty, avg_price=avg_price
+                    symbol=trade.symbol,
+                    quantity=new_qty,
+                    avg_price=avg_price,
                 )
 
-            # Partial close
+            # Partial close → avg price unchanged
             elif abs(signed_qty) < abs(pos.quantity):
                 new_positions[trade.symbol] = Position(
-                    symbol=trade.symbol, quantity=new_qty, avg_price=pos.avg_price
+                    symbol=trade.symbol,
+                    quantity=new_qty,
+                    avg_price=pos.avg_price,
                 )
 
             # Full close
             elif new_qty == 0:
                 del new_positions[trade.symbol]
 
-            # Flip direction
+            # Flip direction → new avg price
             else:
                 new_positions[trade.symbol] = Position(
-                    symbol=trade.symbol, quantity=new_qty, avg_price=trade.price
+                    symbol=trade.symbol,
+                    quantity=new_qty,
+                    avg_price=trade.price,
                 )
 
-        return PortfolioState(cash=new_cash, positions=new_positions)
+        return PortfolioState(
+            cash=new_cash,
+            positions=new_positions,
+            realized_pnl=realized_pnl,
+        )
 
     @staticmethod
     def calculate_equity(state: PortfolioState, prices: dict[str, Decimal]) -> Decimal:
