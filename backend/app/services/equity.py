@@ -1,7 +1,48 @@
 from decimal import Decimal
 from app.market_data.cache import price_cache
+from app.domain.portfolio_engine import PortfolioEngine
+from app.domain.models import PortfolioState
+from datetime import datetime, timezone
+from sqlalchemy.orm import Session
+from app.services.portfolio_state import rebuild_portfolio_state
+from app.api.websockets.manager import TradeWebSocketManager
 
-# from app.domain.portfolio_engine import PortfolioEngine
+def build_equity_snapshot(
+    state: PortfolioState,
+    prices: dict[str, Decimal],
+) -> dict:
+    equity = PortfolioEngine.calculate_equity(state, prices)
+
+    unrealized = Decimal("0")
+    for pos in state.positions.values():
+        unrealized += (prices[pos.symbol] - pos.avg_price) * pos.quantity
+
+    return {
+        "type": "equity_update",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "equity": str(equity),
+        "cash": str(state.cash),
+        "realized_pnl": str(state.realized_pnl),
+        "unrealized_pnl": str(unrealized),
+    }
+
+
+async def broadcast_equity(
+    *,
+    db: Session,
+    portfolio_id: int,
+    ws_manager: TradeWebSocketManager
+):
+    """
+    Rebuild portfolio state from DB, compute equity, and broadcast to clients.
+    Must be called AFTER trade commit.
+    """
+
+    state = rebuild_portfolio_state(db, portfolio_id)
+
+    payload = build_equity_snapshot(state)
+
+    await ws_manager.broadcast(portfolio_id, payload)
 
 
 def compute_equity_snapshot(state):

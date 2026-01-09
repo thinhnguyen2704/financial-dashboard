@@ -11,6 +11,7 @@ import asyncio
 from app.services.pnl import calculate_equity
 from app.services.market_data import get_latest_prices
 from app.services.portfolio import load_portfolio
+from app.api.websockets.manager import trade_ws_manager
 
 router = APIRouter()
 
@@ -97,38 +98,12 @@ async def pnl_stream(ws: WebSocket):
 
 
 @router.websocket("/ws/portfolio/{portfolio_id}")
-async def portfolio_stream(ws: WebSocket, portfolio_id: int):
-    user = await get_current_user_ws(ws)
-    await ws.accept()
-
-    db = SessionLocal()
+async def portfolio_ws(ws: WebSocket, portfolio_id: int):
+    await get_current_user_ws(ws)
+    await trade_ws_manager.connect(portfolio_id, ws)
 
     try:
-        portfolio = load_portfolio(portfolio_id, user)
-        symbols = [p.symbol for p in portfolio.positions]
-
         while True:
-            prices = await get_latest_prices(symbols)
-            equity = calculate_equity(portfolio, prices)
-
-            await ws.send_json(
-                {
-                    "equity": equity,
-                    "cash": portfolio.cash,
-                    "positions": [
-                        {
-                            "symbol": p.symbol,
-                            "qty": p.quantity,
-                            "price": prices.get(p.symbol),
-                        }
-                        for p in portfolio.positions
-                    ],
-                }
-            )
-
-            await asyncio.sleep(1)
-
+            await ws.receive_text()  # keep alive
     except WebSocketDisconnect:
-        pass
-    finally:
-        db.close()
+        trade_ws_manager.disconnect(portfolio_id, ws)
