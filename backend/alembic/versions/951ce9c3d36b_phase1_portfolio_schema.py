@@ -35,7 +35,7 @@ def upgrade() -> None:
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('base_currency', sa.String(length=8), nullable=False),
-    sa.Column('initial_cash', sa.Numeric(precision=18, scale=2), nullable=False),
+    sa.Column('cash', sa.Numeric(precision=18, scale=2), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
