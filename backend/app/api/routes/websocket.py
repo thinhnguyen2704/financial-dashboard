@@ -8,10 +8,13 @@ from app.models.portfolio import Portfolio
 from app.services.pnl import calculate_pnl
 from starlette.websockets import WebSocketDisconnect
 import asyncio
-from app.services.pnl import calculate_equity
-from app.services.market_data import get_latest_prices
-from app.services.portfolio import load_portfolio
 from app.api.websockets.manager import trade_ws_manager
+from app.services.portfolio_registry import (
+    register_portfolio,
+    unregister_portfolio,
+    get_portfolio_symbols,
+)
+from app.db.session import SessionLocal
 
 router = APIRouter()
 
@@ -100,10 +103,24 @@ async def pnl_stream(ws: WebSocket):
 @router.websocket("/ws/portfolio/{portfolio_id}")
 async def portfolio_ws(ws: WebSocket, portfolio_id: int):
     await get_current_user_ws(ws)
+
+    # Register socket
     await trade_ws_manager.connect(portfolio_id, ws)
+
+    # Register portfolio → symbols
+    db = SessionLocal()
+    try:
+        symbols = get_portfolio_symbols(db, portfolio_id)
+        register_portfolio(portfolio_id, symbols)
+    finally:
+        db.close()
 
     try:
         while True:
-            await ws.receive_text()  # keep alive
+            await ws.receive_text()  # keep-alive
     except WebSocketDisconnect:
+        pass
+    finally:
+        # CLEANUP IS HERE
+        unregister_portfolio(portfolio_id)
         trade_ws_manager.disconnect(portfolio_id, ws)
