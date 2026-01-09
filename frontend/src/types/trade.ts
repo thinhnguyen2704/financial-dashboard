@@ -1,9 +1,12 @@
 export interface Trade {
-  timestamp: string;
-  symbol: string;
-  side: "BUY" | "SELL";
-  quantity: string;
-  price: string;
-  fee: string;
-  realized_pnl: string;
+	trade_id: number;
+	portfolio_id: number;
+	symbol: string;
+	side: 'BUY' | 'SELL';
+	quantity: string;
+	price: string;
+	fee: string;
+	slippage: string;
+	realized_pnl: string;
+	timestamp: string;
 }

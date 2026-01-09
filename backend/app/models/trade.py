@@ -22,3 +22,17 @@ class Trade(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
     portfolio = relationship("Portfolio", back_populates="trades")
+
+    def to_event_dict(self) -> dict:
+        return {
+            "trade_id": self.id,
+            "portfolio_id": self.portfolio_id,
+            "symbol": self.symbol,
+            "side": self.side,
+            "quantity": str(self.quantity),
+            "price": str(self.price),
+            "fee": str(self.fee),
+            "slippage": str(self.slippage),
+            "realized_pnl": str(self.realized_pnl),
+            "timestamp": self.timestamp.isoformat(),
+        }

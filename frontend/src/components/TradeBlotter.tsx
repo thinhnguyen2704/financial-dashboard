@@ -10,17 +10,21 @@ export function TradeBlotter({ trades }: { trades: Trade[] }) {
           <th>Side</th>
           <th>Qty</th>
           <th>Price</th>
+          <th>Fee</th>
+          <th>Slippage</th>
           <th>Realized PnL</th>
         </tr>
       </thead>
       <tbody>
-        {trades.map((t, i) => (
-          <tr key={i}>
+        {trades.map(t => (
+          <tr key={t.trade_id}>
             <td>{new Date(t.timestamp).toLocaleTimeString()}</td>
             <td>{t.symbol}</td>
             <td>{t.side}</td>
             <td>{t.quantity}</td>
             <td>{t.price}</td>
+            <td>{t.fee}</td>
+            <td>{t.slippage}</td>
             <td>{t.realized_pnl}</td>
           </tr>
         ))}
