@@ -1,21 +1,48 @@
-import { useEffect, useState } from "react";
-import { createEquitySocket } from "../services/websocket";
+import { useEffect, useState } from 'react';
+import { connectPortfolioEquitySocket } from '../services/websocket';
+import type { EquitySnapshot } from '../types/equity';
+import type { EquityPoint } from '../types/charts';
 
-export function useEquityStream() {
-  const [equity, setEquity] = useState<number | null>(null);
+const MAX_POINTS = 300;
 
-  useEffect(() => {
-    const ws = createEquitySocket();
+export function useEquityStream(portfolioId: number, token: string) {
+	const [equitySeries, setEquitySeries] = useState<EquityPoint[]>([]);
+	const [latestEquity, setLatestEquity] = useState<number | null>(null);
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      setEquity(data.equity);
-    };
+	useEffect(() => {
+		if (!portfolioId || !token) return;
 
-    return () => {
-      ws.close();
-    };
-  }, []);
+		const ws = connectPortfolioEquitySocket(portfolioId, token, {
+			onHistory: (history: EquitySnapshot[]) => {
+				const points: EquityPoint[] = history.map((snap) => ({
+					date: snap.timestamp,
+					equity: Number(snap.equity),
+				}));
 
-  return equity;
+				setEquitySeries(points.slice(-MAX_POINTS));
+
+				if (points.length > 0) {
+					setLatestEquity(points[points.length - 1].equity);
+				}
+			},
+
+			onUpdate: (snap: EquitySnapshot) => {
+				const point: EquityPoint = {
+					date: snap.timestamp,
+					equity: Number(snap.equity),
+				};
+
+				setLatestEquity(point.equity);
+
+				setEquitySeries((prev) => [...prev.slice(-MAX_POINTS), point]);
+			},
+		});
+
+		return () => ws.close();
+	}, [portfolioId, token]);
+
+	return {
+		equitySeries,
+		latestEquity,
+	};
 }

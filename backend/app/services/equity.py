@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from app.services.portfolio_state import rebuild_portfolio_state
 from app.api.websockets.manager import TradeWebSocketManager
+from app.services.equity_buffer import equity_buffer
+from app.models.equity import EquitySnapshot
+
 
 def build_equity_snapshot(
     state: PortfolioState,
@@ -28,21 +31,27 @@ def build_equity_snapshot(
 
 
 async def broadcast_equity(
-    *,
-    db: Session,
-    portfolio_id: int,
-    ws_manager: TradeWebSocketManager
+    *, db: Session, portfolio_id: int, ws_manager: TradeWebSocketManager
 ):
     """
     Rebuild portfolio state from DB, compute equity, and broadcast to clients.
     Must be called AFTER trade commit.
     """
-
     state = rebuild_portfolio_state(db, portfolio_id)
+    snapshot = build_equity_snapshot(state)
 
-    payload = build_equity_snapshot(state)
+    equity_buffer.append(
+        portfolio_id,
+        EquitySnapshot(
+            timestamp=datetime.now(timezone.utc),
+            equity=snapshot["equity"],
+            cash=snapshot["cash"],
+            unrealized_pnl=snapshot["unreal1ized_pnl"],
+            realized_pnl=snapshot["realized_pnl"],
+        ),
+    )
 
-    await ws_manager.broadcast(portfolio_id, payload)
+    await ws_manager.broadcast(portfolio_id, snapshot)
 
 
 def compute_equity_snapshot(state):

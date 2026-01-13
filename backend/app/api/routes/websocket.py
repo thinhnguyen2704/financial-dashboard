@@ -12,9 +12,9 @@ from app.api.websockets.manager import trade_ws_manager
 from app.services.portfolio_registry import (
     register_portfolio,
     unregister_portfolio,
-    get_portfolio_symbols,
 )
-from app.db.session import SessionLocal
+from app.services.portfolio_symbols import get_portfolio_symbols
+from app.services.equity_buffer import equity_buffer
 
 router = APIRouter()
 
@@ -106,6 +106,24 @@ async def portfolio_ws(ws: WebSocket, portfolio_id: int):
 
     # Register socket
     await trade_ws_manager.connect(portfolio_id, ws)
+
+    history = equity_buffer.get_series(portfolio_id)
+    if history:
+        await ws.send_json(
+            {
+                "type": "equity_history",
+                "data": [
+                    {
+                        "timestamp": s.timestamp.isoformat(),
+                        "equity": str(s.equity),
+                        "cash": str(s.cash),
+                        "unrealized_pnl": str(s.unrealized_pnl),
+                        "realized_pnl": str(s.realized_pnl),
+                    }
+                    for s in history
+                ],
+            }
+        )
 
     # Register portfolio → symbols
     db = SessionLocal()

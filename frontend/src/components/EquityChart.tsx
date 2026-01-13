@@ -1,17 +1,19 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import type { EquityPoint } from '../types/charts';
-
+import { ResponsiveContainer } from 'recharts';
 interface Props {
 	data: EquityPoint[];
 }
 
-export default function EquityChart({ data }: Props) {
+export function EquityChart({ data }: Props) {
 	return (
-		<LineChart width={600} height={300} data={data}>
-			<XAxis dataKey='time' />
-			<YAxis />
-			<Tooltip />
-			<Line type='monotone' dataKey='equity' />
-		</LineChart>
+		<ResponsiveContainer width='100%' height={300}>
+			<LineChart data={data}>
+				<XAxis dataKey='timestamp' />
+				<YAxis />
+				<Tooltip />
+				<Line type='monotone' dataKey='equity' strokeWidth={2} dot={false} />
+			</LineChart>
+		</ResponsiveContainer>
 	);
 }

@@ -1,19 +1,49 @@
-export function connectEquitySocket(token: string): WebSocket {
-  const ws = new WebSocket(
-    `ws://localhost:8000/ws/equity?token=${encodeURIComponent(token)}`
-  );
+import type { EquitySnapshot } from '../types/equity';
 
-  ws.onopen = () => {
-    console.log("WebSocket connected");
-  };
+type EquityMessage =
+	| { type: 'equity_history'; data: EquitySnapshot[] }
+	| ({ type: 'equity_update' } & EquitySnapshot);
 
-  ws.onclose = () => {
-    console.log("WebSocket disconnected");
-  };
+export function connectPortfolioEquitySocket(
+	portfolioId: number,
+	token: string,
+	{
+		onHistory,
+		onUpdate,
+	}: {
+		onHistory: (history: EquitySnapshot[]) => void;
+		onUpdate: (snapshot: EquitySnapshot) => void;
+	}
+): WebSocket {
+	const ws = new WebSocket(
+		`ws://localhost:8000/ws/portfolio/${portfolioId}?token=${encodeURIComponent(
+			token
+		)}`
+	);
 
-  ws.onerror = (err) => {
-    console.error("WebSocket error", err);
-  };
+	ws.onopen = () => {
+		console.log('Portfolio equity WebSocket connected');
+	};
 
-  return ws;
+	ws.onmessage = (event) => {
+		const msg: EquityMessage = JSON.parse(event.data);
+
+		if (msg.type === 'equity_history') {
+			onHistory(msg.data);
+		}
+
+		if (msg.type === 'equity_update') {
+			onUpdate(msg);
+		}
+	};
+
+	ws.onclose = () => {
+		console.log('Portfolio equity WebSocket disconnected');
+	};
+
+	ws.onerror = (err) => {
+		console.error('Portfolio equity WebSocket error', err);
+	};
+
+	return ws;
 }
