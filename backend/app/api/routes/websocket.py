@@ -8,13 +8,10 @@ from app.models.portfolio import Portfolio
 from app.services.pnl import calculate_pnl
 from starlette.websockets import WebSocketDisconnect
 import asyncio
-from app.api.websockets.manager import trade_ws_manager
-from app.services.portfolio_registry import (
-    register_portfolio,
-    unregister_portfolio,
-)
-from app.services.portfolio_symbols import get_portfolio_symbols
-from app.services.equity_buffer import equity_buffer
+from app.services.portfolio_loader import get_or_create_runtime
+from app.market_data.cache import price_cache
+from app.domain.portfolio_engine import PortfolioEngine
+from datetime import datetime
 
 router = APIRouter()
 
@@ -101,44 +98,32 @@ async def pnl_stream(ws: WebSocket):
 
 
 @router.websocket("/ws/portfolio/{portfolio_id}")
-async def portfolio_ws(ws: WebSocket, portfolio_id: int):
+async def portfolio_stream(ws: WebSocket, portfolio_id: int):
     await get_current_user_ws(ws)
+    await ws.accept()
 
-    # Register socket
-    await trade_ws_manager.connect(portfolio_id, ws)
-
-    history = equity_buffer.get_series(portfolio_id)
-    if history:
-        await ws.send_json(
-            {
-                "type": "equity_history",
-                "data": [
-                    {
-                        "timestamp": s.timestamp.isoformat(),
-                        "equity": str(s.equity),
-                        "cash": str(s.cash),
-                        "unrealized_pnl": str(s.unrealized_pnl),
-                        "realized_pnl": str(s.realized_pnl),
-                    }
-                    for s in history
-                ],
-            }
-        )
-
-    # Register portfolio → symbols
     db = SessionLocal()
-    try:
-        symbols = get_portfolio_symbols(db, portfolio_id)
-        register_portfolio(portfolio_id, symbols)
-    finally:
-        db.close()
+    runtime = get_or_create_runtime(db, portfolio_id)
 
     try:
         while True:
-            await ws.receive_text()  # keep-alive
+            async with runtime.lock:
+                prices = price_cache.snapshot()
+                equity = PortfolioEngine.calculate_equity(
+                    runtime.state,
+                    prices
+                )
+
+            await ws.send_json({
+                "timestamp": datetime.now(datetime.timezone.utc).isoformat(),
+                "equity": str(equity),
+                "cash": str(runtime.state.cash),
+                "realized_pnl": str(runtime.state.realized_pnl),
+            })
+
+            await asyncio.sleep(1)
+
     except WebSocketDisconnect:
         pass
     finally:
-        # CLEANUP IS HERE
-        unregister_portfolio(portfolio_id)
-        trade_ws_manager.disconnect(portfolio_id, ws)
+        db.close()
