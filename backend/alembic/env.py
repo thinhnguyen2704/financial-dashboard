@@ -4,13 +4,13 @@ from sqlalchemy import pool
 from alembic import context
 import sys
 from pathlib import Path
-import os
+from app.core.config import settings
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(BASE_DIR))
 
-from app.db.base import Base
-import app.db.base
+from app.db.base import Base # noqa
+import app.db.base #noqa
 
 config = context.config
 
@@ -21,7 +21,7 @@ target_metadata = Base.metadata
 
 config.set_main_option(
     "sqlalchemy.url",
-    os.environ["DATABASE_URL"],
+    settings.DATABASE_URL,
 )
 
 # other values from the config, defined by the needs of env.py,
