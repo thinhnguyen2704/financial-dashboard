@@ -1,35 +1,40 @@
-from typing import List
 from app.services.execution import execute_trade
-from app.schemas.backtest import BacktestRequest
-from app.domain.models import Trade
-from app.services.portfolio_factory import create_virtual_portfolio
+from app.services.portfolio_factory import VirtualPortfolioFactory
+from app.schemas.backtest import TradeInput
+from decimal import Decimal
 
 
 class ExecutionResult:
-    def __init__(self, equity_curve, trades):
-        self.equity_curve = equity_curve
+    def __init__(self, portfolio, trades, equity_curve):
+        self.portfolio = portfolio
         self.trades = trades
+        self.equity_curve = equity_curve
+        self.final_cash = portfolio.cash
+        self.final_equity = portfolio.equity
 
 
-def run_backtest(payload: BacktestRequest) -> ExecutionResult:
-    portfolio = create_virtual_portfolio(payload.initial_cash)
+def run_backtest(
+    user_id: int,
+    name: str,
+    trades: list[TradeInput],
+    initial_cash: Decimal,
+) -> ExecutionResult:
+    portfolio = VirtualPortfolioFactory.for_backtest(
+        user_id=user_id,
+        name=name,
+        initial_cash=initial_cash,
+    )
 
-    trades: List[Trade] = []
+    executed_trades = []
     equity_curve = []
 
-    for t in payload.trades:
-        trade = execute_trade(
-            portfolio=portfolio,
-            symbol=t.symbol,
-            side=t.side,
-            qty=float(t.quantity),
-            price=float(t.price),
-            fee=float(t.fee),
-            slippage=float(t.slippage),
-            timestamp=t.timestamp,
-        )
+    for t in trades:
+        trade = execute_trade(...)
+        executed_trades.append(trade)
+        equity_curve.append(portfolio.equity)
 
-        trades.append(trade)
-        equity_curve.append(portfolio.cash)
-
-    return ExecutionResult(equity_curve=equity_curve, trades=trades)
+    return ExecutionResult(
+        portfolio=portfolio,
+        trades=executed_trades,
+        equity_curve=equity_curve,
+    )

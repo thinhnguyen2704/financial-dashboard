@@ -28,3 +28,4 @@ def load_portfolio(
         raise HTTPException(status_code=403, detail="Forbidden")
 
     return portfolio
+

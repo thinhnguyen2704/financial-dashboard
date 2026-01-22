@@ -9,8 +9,8 @@ from app.core.config import settings
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(BASE_DIR))
 
-from app.db.base import Base # noqa
-import app.db.base #noqa
+from app.db.base_class import Base # noqa
+from app.models import * #noqa
 
 config = context.config
 
